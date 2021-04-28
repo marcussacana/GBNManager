@@ -22,8 +22,10 @@ namespace GBNManager
 
         byte[] Script;
 
+        //GSTR Padding found at Trillion Steam Ver.
+        bool HasPadding;
 
-        HeaderFooter Header;
+        Header Header;
 
         TypeDescriptor[] Types;
 
@@ -38,7 +40,7 @@ namespace GBNManager
             using (StructReader Reader = new StructReader(Stream, Encoding: Encoding))
             {
                 OffsetPos = new List<uint>();
-                Header = new HeaderFooter();
+                Header = new Header();
                 Reader.ReadStruct(ref Header);
 
                 if (Header.Flags != 1)
@@ -48,6 +50,8 @@ namespace GBNManager
                 {
                     return Import(true);
                 }
+
+                HasPadding = Header.StructOffset == 0x40; 
 
                 Reader.Position = Header.TypesOffset;
 
@@ -99,20 +103,23 @@ namespace GBNManager
         }
 
         public byte[] Export(string[] Content) {
-            var NewHeader = new HeaderFooter();
+            var NewHeader = new Header();
             Tools.CopyStruct(Header, ref NewHeader);
 
             using (MemoryStream OriScript = new MemoryStream(Script))
             using (MemoryStream Stream = new MemoryStream())
             using (StructWriter Writer = new StructWriter(Stream, Header.Endian == 'B', Encoding)) {
-                NewHeader.StructOffset = 0;
+                NewHeader.StructOffset = (uint)Tools.GetStructLength(NewHeader);
+
+                if (HasPadding)
+                    NewHeader.StructOffset += 12;
 
                 OriScript.Position = Header.StructOffset;
                 byte[] StructData = new byte[Header.StructCount * Header.StructSize];
                 OriScript.Read(StructData, 0, StructData.Length);
 
 
-                NewHeader.TypesOffset = (uint)StructData.Length;
+                NewHeader.TypesOffset = (uint)(NewHeader.StructOffset + StructData.Length);
 
                 OriScript.Position = Header.TypesOffset;
                 byte[] TypeData = new byte[Header.TypesCount * Tools.GetStructLength(new TypeDescriptor())];
@@ -145,6 +152,10 @@ namespace GBNManager
 
 
                 Writer.WriteStruct(ref NewHeader);
+                
+                if (HasPadding)
+                    Writer.Write(new byte[12]);
+
                 Writer.Write(StructData);
                 Writer.Write(TypeData);
                 Writer.Write(StrData);
