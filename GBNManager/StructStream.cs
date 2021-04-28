@@ -731,8 +731,10 @@ namespace AdvancedBinary
             base.Write(Value);
         }
 
-        public void WriteString(string Str, StringStyle Style, FieldInfo Info = null) {
-            switch (Style) {
+        public void WriteString(string Str, StringStyle Style, FieldInfo Info = null)
+        {
+            switch (Style)
+            {
                 case StringStyle.CString:
                     base.Write(Encoding.GetBytes(Str + "\x0"));
                     break;
@@ -882,8 +884,6 @@ namespace AdvancedBinary
                     }
                     else if (Tools.HasAttribute(field, Const.PARRAY))
                     {
-                        FType = FType.Substring(0, FType.Length - 2);
-
                         string PType = Tools.GetAttributePropertyValue(field, Const.PARRAY, "PrefixType");
                         Count = ReadField(PType, field, ref Instance);
 
